@@ -404,6 +404,7 @@ class PlacementGUI:
         self.history = PredictionHistory()
         self.model_type = tk.StringVar(value="Decision Tree")
         self.model_comparison_results = None
+        self.models = {}  # Cache for trained models
         
         # Try to load existing model, otherwise train new one
         if not self.predictor.load_model():
@@ -413,6 +414,10 @@ class PlacementGUI:
                 logger.info("New model trained and saved")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not train model: {e}")
+        
+        # Store the initial model
+        if self.predictor.model is not None:
+            self.models["Decision Tree"] = self.predictor.model
         
         self.setup_ui()
         
@@ -651,7 +656,22 @@ class PlacementGUI:
             if features is None:
                 return
             
-            prediction, confidence = self.predictor.predict(features)
+            # Get the selected model
+            selected_model = self.get_selected_model()
+            if selected_model is None:
+                messagebox.showerror("Error", "No model available for prediction")
+                return
+            
+            # Make prediction with selected model
+            features_array = np.array(features).reshape(1, -1)
+            prediction = selected_model.predict(features_array)[0]
+            probabilities = selected_model.predict_proba(features_array)[0]
+            confidence = max(probabilities)
+            prediction = str(prediction)
+            
+            # Use the original predictor's model temporarily for compatibility
+            original_model = self.predictor.model
+            self.predictor.model = selected_model
             
             # Display result
             self.result_text.delete(1.0, tk.END)
@@ -670,15 +690,23 @@ class PlacementGUI:
                 roll_number = self.entries['roll_number'].get()
                 self.history.save_prediction(features, prediction, confidence, roll_number)
                 
-                self.status_label.config(text=f"Prediction successful - Confidence: {confidence:.2%}")
+                selected = self.model_type.get()
+                self.status_label.config(text=f"Prediction successful ({selected}) - Confidence: {confidence:.2%}")
             else:
                 self.result_text.insert(1.0, "Student is not eligible for placement")
                 self.status_label.config(text="Prediction: Not eligible")
+            
+            # Restore original model
+            if 'original_model' in locals():
+                self.predictor.model = original_model
                 
         except Exception as e:
             messagebox.showerror("Prediction Error", f"Error making prediction: {e}")
             logger.error(f"Prediction error: {e}")
             self.status_label.config(text="Error occurred")
+            # Restore original model in case of error
+            if 'original_model' in locals():
+                self.predictor.model = original_model
     
     def save_prediction(self, features: List[float], prediction: str):
         """Save prediction to output CSV file"""
@@ -707,10 +735,69 @@ class PlacementGUI:
         self.result_text.delete(1.0, tk.END)
         self.status_label.config(text="Fields cleared")
     
+    def get_selected_model(self):
+        """Get or train the selected model"""
+        selected = self.model_type.get()
+        
+        # If model is already cached, use it
+        if selected in self.models:
+            return self.models[selected]
+        
+        # Otherwise, train the selected model
+        try:
+            self.status_label.config(text=f"Training {selected} model... Please wait.")
+            self.root.update()
+            
+            X, y = self.predictor.load_data()
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=y
+            )
+            
+            # Create and train the selected model
+            if selected == "Decision Tree":
+                model = DecisionTreeClassifier(
+                    max_depth=10, min_samples_split=5, min_samples_leaf=2, random_state=42
+                )
+            elif selected == "Random Forest":
+                model = RandomForestClassifier(
+                    n_estimators=100, max_depth=10, min_samples_split=5, random_state=42
+                )
+            elif selected == "Gradient Boosting":
+                model = GradientBoostingClassifier(
+                    n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42
+                )
+            elif selected == "XGBoost":
+                if not XGBOOST_AVAILABLE:
+                    messagebox.showerror("Error", "XGBoost is not installed. Install with: pip install xgboost")
+                    self.model_type.set("Decision Tree")
+                    return self.get_selected_model()
+                model = XGBClassifier(
+                    n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42
+                )
+            else:
+                # Default to Decision Tree
+                model = DecisionTreeClassifier(
+                    max_depth=10, min_samples_split=5, min_samples_leaf=2, random_state=42
+                )
+            
+            model.fit(X_train, y_train)
+            self.models[selected] = model
+            self.status_label.config(text=f"{selected} model ready")
+            return model
+            
+        except Exception as e:
+            logger.error(f"Error training {selected} model: {e}")
+            messagebox.showerror("Error", f"Failed to train {selected} model: {e}")
+            # Fallback to Decision Tree
+            if "Decision Tree" in self.models:
+                return self.models["Decision Tree"]
+            return self.predictor.model
+    
     def on_model_change(self, event=None):
         """Handle model selection change"""
         selected = self.model_type.get()
-        self.status_label.config(text=f"Selected model: {selected}. Train model to use it.")
+        # Get or train the model (this will cache it)
+        self.get_selected_model()
     
     def batch_predict(self):
         """Batch prediction from CSV file"""
@@ -748,11 +835,21 @@ class PlacementGUI:
             if features is None:
                 return
             
+            # Get selected model and temporarily use it
+            selected_model = self.get_selected_model()
+            if selected_model is None:
+                messagebox.showerror("Error", "No model available")
+                return
+            
+            original_model = self.predictor.model
+            self.predictor.model = selected_model
+            
             recommendations = self.predictor.get_recommendations(features)
             
             if not recommendations:
                 messagebox.showinfo("Recommendations", 
                     "No specific recommendations. Your profile looks good!")
+                self.predictor.model = original_model
                 return
             
             # Create recommendations window
@@ -775,8 +872,14 @@ class PlacementGUI:
             
             text_widget.config(state='disabled')
             
+            # Restore original model
+            self.predictor.model = original_model
+            
         except Exception as e:
             messagebox.showerror("Error", f"Error getting recommendations: {e}")
+            # Restore original model in case of error
+            if 'original_model' in locals():
+                self.predictor.model = original_model
     
     def show_feature_importance(self):
         """Display feature importance"""
