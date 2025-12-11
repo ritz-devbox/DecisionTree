@@ -886,13 +886,27 @@ class PlacementGUI:
                 conf = entry.get('confidence', 0)
                 features = entry.get('features', [])
                 
+                # Safely access features with defaults if list is incomplete
+                if len(features) >= 6:
+                    features_str = (f"Features: Aggregate={features[0]:.1f}%, Backlogs={features[1]}, "
+                                   f"10th={features[2]:.1f}%, 12th={features[3]:.1f}%, "
+                                   f"Workshops={features[4]}, Languages={features[5]}")
+                else:
+                    # Handle incomplete or missing features
+                    feature_defaults = [0.0, 0, 0.0, 0.0, 0, 0]
+                    for i in range(min(len(features), 6)):
+                        feature_defaults[i] = features[i]
+                    features_str = (f"Features: Aggregate={feature_defaults[0]:.1f}%, Backlogs={feature_defaults[1]}, "
+                                   f"10th={feature_defaults[2]:.1f}%, 12th={feature_defaults[3]:.1f}%, "
+                                   f"Workshops={feature_defaults[4]}, Languages={feature_defaults[5]}")
+                    if len(features) < 6:
+                        features_str += " (incomplete data)"
+                
                 text_widget.insert('end', 
                     f"Time: {timestamp}\n"
                     f"Roll Number: {roll}\n"
                     f"Prediction: {pred} (Confidence: {conf:.1%})\n"
-                    f"Features: Aggregate={features[0]:.1f}%, Backlogs={features[1]}, "
-                    f"10th={features[2]:.1f}%, 12th={features[3]:.1f}%, "
-                    f"Workshops={features[4]}, Languages={features[5]}\n"
+                    f"{features_str}\n"
                     f"{'-'*70}\n\n")
             
             text_widget.config(state='disabled')
