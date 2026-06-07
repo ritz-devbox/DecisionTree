@@ -1,4 +1,4 @@
-# 🎓 Student Placement Prediction System
+# Student Placement Prediction System
 
 A comprehensive machine learning application for predicting student placement outcomes using multiple ML algorithms. Built with Python, Tkinter, and scikit-learn.
 
