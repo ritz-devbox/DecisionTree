@@ -398,7 +398,8 @@ class PlacementGUI:
         self.root = root
         self.root.title('Training and Placement Cell - Placement Prediction System')
         self.root.geometry('900x800')
-        self.root.configure(bg='lightblue')
+        self.background_color = '#EAF4FF'
+        self.root.configure(bg=self.background_color)
         
         self.predictor = PlacementPredictor()
         self.history = PredictionHistory()
@@ -427,14 +428,14 @@ class PlacementGUI:
         title_label = tk.Label(
             self.root,
             text='STUDENT PLACEMENT PREDICTION SYSTEM',
-            bg="lightblue",
-            fg="black",
+            bg=self.background_color,
+            fg="#12355B",
             font=("Arial", 18, "bold")
         )
         title_label.pack(pady=20)
         
         # Create main frame
-        main_frame = tk.Frame(self.root, bg='lightblue')
+        main_frame = tk.Frame(self.root, bg=self.background_color)
         main_frame.pack(pady=20, padx=20, fill='both', expand=True)
         
         # Input fields
@@ -450,7 +451,7 @@ class PlacementGUI:
         ]
         
         for i, (label_text, key) in enumerate(fields):
-            label = tk.Label(main_frame, text=label_text, bg="lightblue", font=("Arial", 10, "bold"))
+            label = tk.Label(main_frame, text=label_text, bg=self.background_color, font=("Arial", 10, "bold"))
             label.grid(row=i, column=0, sticky='w', pady=5, padx=10)
             
             entry = tk.Entry(main_frame, width=30, font=("Arial", 10))
@@ -458,7 +459,7 @@ class PlacementGUI:
             self.entries[key] = entry
         
         # Model selection
-        model_label = tk.Label(main_frame, text='Model:', bg="lightblue", font=("Arial", 10, "bold"))
+        model_label = tk.Label(main_frame, text='Model:', bg=self.background_color, font=("Arial", 10, "bold"))
         model_label.grid(row=len(fields), column=0, sticky='w', pady=5, padx=10)
         
         model_combo = ttk.Combobox(main_frame, textvariable=self.model_type, 
@@ -468,7 +469,7 @@ class PlacementGUI:
         model_combo.bind('<<ComboboxSelected>>', self.on_model_change)
         
         # Buttons frame
-        button_frame = tk.Frame(main_frame, bg='lightblue')
+        button_frame = tk.Frame(main_frame, bg=self.background_color)
         button_frame.grid(row=len(fields)+1, column=0, columnspan=2, pady=20)
         
         submit_btn = tk.Button(
@@ -496,7 +497,7 @@ class PlacementGUI:
         clear_btn.pack(side='left', padx=5)
         
         # Advanced features buttons frame
-        advanced_frame = tk.Frame(main_frame, bg='lightblue')
+        advanced_frame = tk.Frame(main_frame, bg=self.background_color)
         advanced_frame.grid(row=len(fields)+2, column=0, columnspan=2, pady=10)
         
         batch_btn = tk.Button(
@@ -560,7 +561,7 @@ class PlacementGUI:
         history_btn.pack(side='left', padx=3)
         
         # Result area
-        result_label = tk.Label(main_frame, text='Prediction Result:', bg="lightblue", font=("Arial", 12, "bold"))
+        result_label = tk.Label(main_frame, text='Prediction Result:', bg=self.background_color, font=("Arial", 12, "bold"))
         result_label.grid(row=len(fields)+3, column=0, columnspan=2, pady=(20, 5), sticky='w', padx=10)
         
         self.result_text = tk.Text(
@@ -577,7 +578,7 @@ class PlacementGUI:
         self.status_label = tk.Label(
             main_frame,
             text='Ready',
-            bg="lightblue",
+            bg=self.background_color,
             font=("Arial", 9),
             anchor='w'
         )
